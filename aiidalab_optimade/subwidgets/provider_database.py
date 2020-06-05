@@ -51,6 +51,7 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
         self.offset = 0
         self.__perform_query = True
         self.__cached_child_dbs = {}
+        self.__cached_state = {}
 
         self.debug = bool(os.environ.get("OPTIMADE_CLIENT_DEBUG", None))
 
@@ -96,6 +97,23 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
             **kwargs,
         )
 
+    def work_started(self):
+        """Cache sub-widget states and freeze widget"""
+        for widget in ["providers", "child_dbs"]:
+            self.__cached_state[widget] = getattr(self, widget).disabled
+        LOGGER.debug(
+            "Stored state cache for %s: %r",
+            self.__class__.__name__,
+            self.__cached_state,
+        )
+        self.freeze()
+
+    def work_stopped(self):
+        """Unfreeze widget and set cached states for sub-widgets"""
+        self.unfreeze()
+        for widget in ["providers", "child_dbs"]:
+            setattr(getattr(self, widget), "disabled", self.__cached_state[widget])
+
     def freeze(self):
         """Disable widget"""
         self.providers.disabled = True
@@ -122,7 +140,6 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
     def _observe_providers(self, change: dict):
         """Update child database dropdown upon changing provider"""
         index = change["new"]
-        self.child_dbs.disabled = True
         self.provider = self.providers.value
         if index is None or self.providers.value is None:
             self.child_dbs.options = self.INITIAL_CHILD_DBS
@@ -136,13 +153,22 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
                 # or we have failed to retrieve any implementations.
                 # Automatically choose the 1 implementation (if there),
                 # while otherwise keeping the dropdown disabled.
+                LOGGER.debug(
+                    "Provider %r has only %d implementations, will disable child_dbs dropdown",
+                    self.provider.name,
+                    len(self.child_dbs.options),
+                )
                 self.child_dbs.disabled = True
                 try:
                     self.child_dbs.index = 1
                 except IndexError:
-                    pass
-            else:
-                self.child_dbs.disabled = False
+                    LOGGER.debug("No implementation chosen")
+                else:
+                    LOGGER.debug(
+                        "Choose new implemention: %r (database traitlet=%r)",
+                        self.child_dbs.value,
+                        self.database,
+                    )
 
     def _observe_child_dbs(self, change):
         """Update database traitlet with base URL for chosen child database"""
@@ -193,7 +219,7 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
                 child_dbs, links, data_returned = self._query()
 
                 while True:
-                    # Update list of structures in dropdown widget
+                    # Update list of child DBs in dropdown widget
                     exclude_child_dbs, final_child_dbs = self._update_child_dbs(
                         child_dbs
                     )
@@ -247,7 +273,7 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
                 self.child_dbs.options = self.INITIAL_CHILD_DBS
                 self.child_dbs.disabled = True
 
-        else:
+        finally:
             self.unfreeze()
 
     def _set_child_dbs(self, data: List[Tuple[str, LinksResourceAttributes]]):
@@ -595,6 +621,12 @@ class ProviderImplementationSummary(ipw.GridspecLayout):
         html_text = f"""<strong style="line-height:1;{self.text_style}">{getattr(self.database, 'name', 'Database')}</strong>
         <p style="line-height:1.2;{self.text_style}">{getattr(self.database, 'description', '')}</p>"""
         self.database_summary.value = html_text
+
+    def work_started(self):
+        """Cache sub-widget states and freeze widget"""
+
+    def work_stopped(self):
+        """Unfreeze widget and set cached states for sub-widgets"""
 
     def freeze(self):
         """Disable widget"""

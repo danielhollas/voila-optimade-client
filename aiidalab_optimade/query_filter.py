@@ -269,6 +269,7 @@ class OptimadeQueryFilterWidget(  # pylint: disable=too-many-instance-attributes
     def __init__(self, result_limit: int = None, **kwargs):
         self.page_limit = result_limit if result_limit else 10
         self.__cached_ranges = {}
+        self.__cached_state = {}
 
         self.filter_header = ipw.HTML(
             '<h4 style="margin:0px;padding:0px;">Apply filters</h4>'
@@ -302,7 +303,7 @@ class OptimadeQueryFilterWidget(  # pylint: disable=too-many-instance-attributes
     def _on_freeze_filters(self, change: dict):
         """Using traitlet to freeze filters"""
         if change["new"]:
-            self.freeze()
+            self.work_started()
         with self.hold_trait_notifications():
             self.freeze_filters = False
 
@@ -310,7 +311,7 @@ class OptimadeQueryFilterWidget(  # pylint: disable=too-many-instance-attributes
     def _on_unfreeze_filters(self, change: dict):
         """Using traitlet to unfreeze filters"""
         if change["new"]:
-            self.unfreeze()
+            self.work_stopped()
         with self.hold_trait_notifications():
             self.unfreeze_filters = False
 
@@ -350,17 +351,32 @@ class OptimadeQueryFilterWidget(  # pylint: disable=too-many-instance-attributes
             if self.query_button.tooltip == working_tooltip:
                 self.query_button.tooltip = "Search"
 
+    def work_started(self):
+        """Cache sub-widget states and freeze widget"""
+        for widget in ["query_button"]:
+            self.__cached_state[widget] = getattr(self, widget).disabled
+        LOGGER.debug(
+            "Stored state cache for %s: %r",
+            self.__class__.__name__,
+            self.__cached_state,
+        )
+        self.freeze()
+
+    def work_stopped(self):
+        """Unfreeze widget and set cached states for sub-widgets"""
+        self.unfreeze()
+        for widget in ["query_button"]:
+            setattr(getattr(self, widget), "disabled", self.__cached_state[widget])
+
     def freeze(self):
         """Disable widget"""
         self.query_button.disabled = True
         self.filters.freeze()
-        self.freeze_selector = True
 
     def unfreeze(self):
         """Activate widget (in its current state)"""
         self.query_button.disabled = False
         self.filters.unfreeze()
-        self.unfreeze_selector = True
 
     def reset(self):
         """Reset widget"""

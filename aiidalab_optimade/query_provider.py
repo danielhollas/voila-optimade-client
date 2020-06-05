@@ -30,6 +30,8 @@ class OptimadeQueryProviderWidget(ipw.GridspecLayout):
     unfreeze_selector = traitlets.Bool(False)
 
     def __init__(self, embedded: bool = False, database_limit: int = None, **kwargs):
+        self.__children_freeze_cache = {}
+
         database_limit = database_limit if database_limit and database_limit > 0 else 10
 
         layout = ipw.Layout(width="100%", height="auto")
@@ -61,7 +63,8 @@ class OptimadeQueryProviderWidget(ipw.GridspecLayout):
     def _on_freeze_selector(self, change: dict):
         """Using traitlet to freeze chooser"""
         if change["new"]:
-            self.freeze()
+            for widget in self.children:
+                widget.work_started()
         with self.hold_trait_notifications():
             self.freeze_selector = False
 
@@ -69,7 +72,8 @@ class OptimadeQueryProviderWidget(ipw.GridspecLayout):
     def _on_unfreeze_selector(self, change: dict):
         """Using traitlet to unfreeze chooser"""
         if change["new"]:
-            self.unfreeze()
+            for widget in self.children:
+                widget.work_finished()
         with self.hold_trait_notifications():
             self.unfreeze_selector = False
 
