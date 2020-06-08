@@ -381,10 +381,9 @@ class OptimadeQueryFilterWidget(  # pylint: disable=too-many-instance-attributes
     def reset(self):
         """Reset widget"""
         self.error_or_status_messages.value = ""
-        with self.hold_trait_notifications():
-            self.query_button.disabled = False
-            self.query_button.tooltip = "Search - No database chosen"
-            self.filters.reset()
+        self.query_button.disabled = False
+        self.query_button.tooltip = "Search - No database chosen"
+        self.filters.reset()
 
     def _set_intslider_ranges(self):
         """Update IntRangeSlider ranges according to chosen database

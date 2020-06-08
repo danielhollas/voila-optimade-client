@@ -162,7 +162,7 @@ class FilterInput(ipw.HBox):
 
     def reset(self):
         """Reset widget"""
-        with self.hold_trait_notifications():
+        if isinstance(self.input_widget.value, (str, traitlets.Unicode)):
             self.input_widget.value = ""
         self.input_widget.disabled = False
 

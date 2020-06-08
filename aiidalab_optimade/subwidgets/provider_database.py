@@ -156,7 +156,8 @@ class ProviderImplementationChooser(  # pylint: disable=too-many-instance-attrib
                 LOGGER.debug(
                     "Provider %r has only %d implementations, will disable child_dbs dropdown",
                     self.provider.name,
-                    len(self.child_dbs.options),
+                    len(self.child_dbs.options)
+                    - 1,  # Remove the None entry "Select one"
                 )
                 self.child_dbs.disabled = True
                 try:
